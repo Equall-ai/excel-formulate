@@ -401,6 +401,14 @@ module.exports = {
         'SUMIF(A7:A12,"",C7)': 400,
     },
 
+    SUMIFS: {
+        'SUMIFS(C7:C12, A7:A12, "Vegetables")': 12000,
+        'SUMIFS(C7:C12, A7:A12, "Vegetables", B7:B12, "*o*")': 6500,
+        'SUMIFS(C7:C12, A7:A12, "Fruits")': 2000,
+        'SUMIFS(C7:C12, A7:A12, "Vegetables", C7:C12, ">4200")': 5500,
+        'SUMIFS(B2:B5, A2:A5, ">200000", A2:A5, "<400000")': 21000,
+    },
+
     SUMPRODUCT: {
         'SUMPRODUCT({1,"12";7,2}, {2,1;5,2})': 41,
         'SUMPRODUCT({1,12;7,2}, {2,1;5,2})': 53,
