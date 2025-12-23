@@ -636,8 +636,84 @@ const MathFunctions = {
         return sum;
     },
 
-    SUMIFS: () => {
+    /**
+     * This function requires instance of {@link FormulaParser}.
+     */
+    SUMIFS: (context, sumRange, ...args) => {
+        if (args.length < 2 || args.length % 2 !== 0)
+            throw FormulaError.ARG_MISSING('SUMIFS requires at least 3 arguments (sum_range, criteria_range, criteria) and criteria pairs must be even');
 
+        // Get the sum range
+        const ranges = H.retrieveRanges(context, sumRange);
+        const actualSumRange = ranges[0];
+        const sumRangeHeight = actualSumRange.length;
+        const sumRangeWidth = actualSumRange[0].length;
+
+        // Process criteria pairs
+        const criteriaPairs = [];
+        for (let i = 0; i < args.length; i += 2) {
+            const criteriaRange = args[i];
+            const criterion = args[i + 1];
+
+            // Retrieve the criteria range
+            const rangeInfo = H.retrieveRanges(context, criteriaRange);
+            const actualCriteriaRange = rangeInfo[0];
+
+            // Validate that criteria range matches sum range dimensions
+            if (actualCriteriaRange.length !== sumRangeHeight || actualCriteriaRange[0].length !== sumRangeWidth)
+                throw FormulaError.VALUE;
+
+            // Parse the criterion
+            const criterionValue = H.retrieveArg(context, criterion);
+            const isCriteriaArray = criterionValue.isArray;
+            const parsedCriterion = Criteria.parse(H.accept(criterionValue));
+
+            criteriaPairs.push({
+                range: actualCriteriaRange,
+                criterion: parsedCriterion,
+                isCriteriaArray
+            });
+        }
+
+        let sum = 0;
+
+        // Iterate through each cell in the sum range
+        actualSumRange.forEach((row, rowNum) => {
+            row.forEach((valueToAdd, colNum) => {
+                if (typeof valueToAdd !== "number")
+                    return;
+
+                // Check if all criteria match for this cell
+                let allCriteriaMatch = true;
+
+                for (const pair of criteriaPairs) {
+                    const criteriaValue = pair.range[rowNum][colNum];
+                    const criterion = pair.criterion;
+
+                    let matches = false;
+
+                    // Wildcard matching
+                    if (criterion.op === 'wc') {
+                        matches = criterion.match === criterion.value.test(criteriaValue);
+                    } else {
+                        // Standard comparison
+                        matches = Infix.compareOp(criteriaValue, criterion.op, criterion.value, Array.isArray(criteriaValue), pair.isCriteriaArray);
+                    }
+
+                    if (!matches) {
+                        allCriteriaMatch = false;
+                        break;
+                    }
+                }
+
+                // Add to sum if all criteria matched
+                if (allCriteriaMatch) {
+                    sum += valueToAdd;
+                }
+            });
+        });
+
+        return sum;
     },
 
     SUMPRODUCT: (array1, ...arrays) => {
