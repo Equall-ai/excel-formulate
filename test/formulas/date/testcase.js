@@ -1,4 +1,19 @@
 const FormulaError = require('../../../formulas/error');
+
+// Helper to calculate the serial number for Dec 3 of current year
+// This avoids needing to update tests every year
+function getCurrentYearDec3Serial() {
+    // Use the same logic as the toSerial function in date.js
+    const MS_PER_DAY = 1000 * 60 * 60 * 24;
+    const d1900 = new Date(Date.UTC(1900, 0, 1));
+    const currentYear = new Date().getFullYear();
+    const dec3 = new Date(Date.UTC(currentYear, 11, 3)); // Month is 0-indexed, so 11 = December
+    const addOn = (dec3 > -2203891200000) ? 2 : 1;
+    return Math.floor((dec3 - d1900) / MS_PER_DAY) + addOn;
+}
+
+const DEC_3_CURRENT_YEAR_SERIAL = getCurrentYearDec3Serial();
+
 module.exports = {
     DATE: {
         'DATE(108,1,2)': 39449,
@@ -53,7 +68,6 @@ module.exports = {
         'DATEVALUE("11" & "/" & "3" & "/" & "2011")': 40850,
 
         // all formats
-        // TODO: Update results every year :(
         'DATEVALUE("12/3/2014")': 41976,
         'DATEVALUE("Wednesday, December 3, 2014")': 41976,
         'DATEVALUE("2014-12-3")': 41976,
@@ -61,11 +75,11 @@ module.exports = {
         'DATEVALUE("12/03/14")': 41976,
         'DATEVALUE("3-Dec-14")': 41976,
         'DATEVALUE("03-Dec-14")': 41976,
-        'DATEVALUE("12/3")': 45629, // *special
-        'DATEVALUE("3-Dec")': 45629, // *special
-        'DATEVALUE("Dec-3")': 45629, // *special
-        'DATEVALUE("December-3")': 45629, // *special
-        'DATEVALUE("Dec-3 11:11")': 45629, // *special
+        'DATEVALUE("12/3")': DEC_3_CURRENT_YEAR_SERIAL, // Dynamic: uses current year
+        'DATEVALUE("3-Dec")': DEC_3_CURRENT_YEAR_SERIAL, // Dynamic: uses current year
+        'DATEVALUE("Dec-3")': DEC_3_CURRENT_YEAR_SERIAL, // Dynamic: uses current year
+        'DATEVALUE("December-3")': DEC_3_CURRENT_YEAR_SERIAL, // Dynamic: uses current year
+        'DATEVALUE("Dec-3 11:11")': DEC_3_CURRENT_YEAR_SERIAL, // Dynamic: uses current year
         'DATEVALUE("December 3, 2014")': 41976,
         'DATEVALUE("12/3/14 12:00 AM")': 41976,
         'DATEVALUE("12/3/14 0:00")': 41976,
