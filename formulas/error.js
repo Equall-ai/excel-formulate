@@ -135,7 +135,16 @@ FormulaError.ARG_MISSING = (args) => {
  * @constructor
  */
 FormulaError.ERROR = (msg, details) => {
-    return new FormulaError('#ERROR!', msg, details);
+    try {
+        return new FormulaError('#ERROR!', msg, details);
+    } catch (e) {
+        console.error('[FormulaError.ERROR] Error creating FormulaError:');
+        console.error(`  msg: ${msg}`);
+        console.error(`  details: ${details}`);
+        console.error(`  Error: ${e.message}`);
+        console.error(`  Stack: ${e.stack}`);
+        throw e;
+    }
 }
 
 module.exports = FormulaError;
