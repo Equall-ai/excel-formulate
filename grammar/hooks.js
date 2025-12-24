@@ -294,23 +294,50 @@ class FormulaParser {
         if (inputText.length === 0) throw Error('Input must not be empty.');
         this.position = position;
         this.async = false;
-        const lexResult = lexer.lex(inputText);
-        this.parser.input = lexResult.tokens;
-        let res;
+
+        // Create a new parser instance for recursive parsing support
+        // This prevents Chevrotain parser state corruption during recursive calls
+        const isRecursiveCall = !!this._parseDepth;
+        if (!this._parseDepth) {
+            this._parseDepth = 0;
+        }
+        this._parseDepth++;
+
         try {
-            res = this.parser.formulaWithBinaryOp();
+            // Use a different parser instance for nested calls to avoid Chevrotain state corruption
+            let parserToUse = this.parser;
+            let lexResult = lexer.lex(inputText);
+
+            if (isRecursiveCall) {
+                // For recursive calls, create a new parser with proper state
+                const { Parser } = require('./parsing');
+                parserToUse = new Parser(this, this.utils);
+            }
+
+            parserToUse.input = lexResult.tokens;
+
+            let res;
+            res = parserToUse.formulaWithBinaryOp();
             res = this.checkFormulaResult(res, allowReturnArray);
             if (res instanceof FormulaError) {
                 return res;
             }
+
+            if (parserToUse.errors.length > 0) {
+                const error = parserToUse.errors[0];
+                throw Utils.formatChevrotainError(error, inputText);
+            }
+
+            return res;
         } catch (e) {
+            // If it's already a FormulaError (from formatChevrotainError), re-throw it
+            if (e instanceof FormulaError) {
+                throw e;
+            }
             throw FormulaError.ERROR(e.message, e);
+        } finally {
+            this._parseDepth--;
         }
-        if (this.parser.errors.length > 0) {
-            const error = this.parser.errors[0];
-            throw Utils.formatChevrotainError(error, inputText);
-        }
-        return res;
     }
 
     /**

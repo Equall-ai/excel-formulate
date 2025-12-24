@@ -32,6 +32,7 @@
     "bahttext": "^1.1.0",
     "bessel": "^1.0.2",
     "chevrotain": "^7.0.1",
+    "exceljs": "^4.4.0",
     "jstat": "^1.9.3"
   },
   "devDependencies": {
