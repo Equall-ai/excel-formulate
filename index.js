@@ -2,6 +2,7 @@ const {FormulaParser} = require('./grammar/hooks');
 const {DepParser} = require('./grammar/dependency/hooks');
 const SSF = require('./ssf/ssf');
 const FormulaError = require('./formulas/error');
+const {evaluateWorkbook, evaluateFormula} = require('./grammar/workbook/evaluator');
 
 // const funs = new FormulaParser().supportedFunctions();
 // console.log('Supported:', funs.join(', '),
@@ -13,6 +14,9 @@ Object.assign(FormulaParser, {
     MAX_COLUMN: 16384,
     SSF,
     DepParser,
-    FormulaError, ...require('./formulas/helpers')
+    FormulaError,
+    evaluateWorkbook,
+    evaluateFormula,
+    ...require('./formulas/helpers')
 });
 module.exports = FormulaParser;

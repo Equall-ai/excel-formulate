@@ -78,7 +78,18 @@ class DepParser {
         const res = {ref: this.onVariable(name, this.position.sheet)};
         if (res.ref == null)
             return FormulaError.NAME;
-        if (FormulaHelpers.isCellRef(res))
+
+        // If onVariable returns a marker object with just {name}, add it as a variable reference
+        if (res.ref && res.ref.name && !res.ref.row && !res.ref.col && !res.ref.from) {
+            // Deduplicate variable references
+            const idx = this.data.findIndex(element => element.name === res.ref.name);
+            if (idx === -1)
+                this.data.push({name: res.ref.name});
+            return 0;
+        }
+
+        // Otherwise, treat as cell/range reference
+        if (FormulaHelpers.isCellRef(res.ref))
             this.getCell(res.ref);
         else {
             this.getRange(res.ref);
