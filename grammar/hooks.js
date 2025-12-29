@@ -104,10 +104,17 @@ class FormulaParser {
      */
     getVariable(name) {
         // console.log('get variable', name);
-        const res = {ref: this.onVariable(name, this.position.sheet, this.position)};
-        if (res.ref == null)
+        const variableValue = this.onVariable(name, this.position.sheet, this.position);
+        if (variableValue == null)
             return FormulaError.NAME;
-        return res;
+
+        // If onVariable returns a plain value (number, string, boolean), return it directly
+        if (typeof variableValue === 'number' || typeof variableValue === 'string' || typeof variableValue === 'boolean') {
+            return variableValue;
+        }
+
+        // Otherwise, treat it as a reference
+        return {ref: variableValue};
     }
 
     /**

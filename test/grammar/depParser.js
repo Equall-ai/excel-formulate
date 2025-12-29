@@ -3,7 +3,11 @@ const {DepParser} = require('../../grammar/dependency/hooks');
 
 const depParser = new DepParser({
     onVariable: variable => {
-        return 'aaaa' === variable ? {from: {row: 1, col: 1}, to: {row: 2, col: 2}} : {row: 1, col: 1};
+        if (variable === 'aaaa') {
+            return {from: {row: 1, col: 1}, to: {row: 2, col: 2}};
+        }
+        // Return marker object for unknown variables
+        return {name: variable};
     }
 });
 const position = {row: 1, col: 1, sheet: 'Sheet1'};
@@ -92,9 +96,7 @@ describe('Dependency parser', () => {
                 "sheet": "Sheet1",
             },
             {
-                "col": 1,
-                "row": 1,
-                "sheet": "Sheet1",
+                "name": "start_day",
             },
             {
                 "col": 15,
