@@ -342,6 +342,54 @@ function _topologicallySortCells(cells, variables) {
 }
 
 /**
+ * @param {CellData[]} indexedCells
+ * @param {number} minRow
+ * @param {number} maxRow
+ * @param {number} rowCount
+ * @returns {any[]}
+ */
+function _getColumnValuesFromIndex(indexedCells, minRow, maxRow, rowCount) {
+  const values = new Array(rowCount).fill(0);
+  for (const cell of indexedCells) {
+    if (cell.address.row >= minRow && cell.address.row <= maxRow) {
+      const rowIndex = cell.address.row - minRow;
+      if (cell.type === 'formula' && cell.formulaData && cell.formulaData.cachesResult !== undefined) {
+        values[rowIndex] = cell.formulaData.cachesResult;
+      } else {
+        values[rowIndex] = cell.value !== undefined && cell.value !== null ? cell.value : 0;
+      }
+    }
+  }
+  return values;
+}
+
+/**
+ * @param {Object.<string, CellData>} sheetData
+ * @param {number} col
+ * @param {number} minRow
+ * @param {number} maxRow
+ * @param {number} rowCount
+ * @returns {any[]}
+ */
+function _getColumnValuesFromSheet(sheetData, col, minRow, maxRow, rowCount) {
+  const values = new Array(rowCount).fill(0);
+  for (let row = minRow; row <= maxRow; row++) {
+    const address = _rowColToA1(row, col);
+    const cell = sheetData[address];
+    const rowIndex = row - minRow;
+
+    if (cell) {
+      if (cell.type === 'formula' && cell.formulaData && cell.formulaData.cachesResult !== undefined) {
+        values[rowIndex] = cell.formulaData.cachesResult;
+      } else {
+        values[rowIndex] = cell.value !== undefined && cell.value !== null ? cell.value : 0;
+      }
+    }
+  }
+  return values;
+}
+
+/**
  * @param {any} formulaParser - FormulaParser instance
  * @param {string} formula
  * @param {{row: number; col: number; sheet: string}} [context]
@@ -378,6 +426,19 @@ function evaluateWorkbook(workbook) {
     cellIndex[_hashCellAddress(cell.address)] = cell;
   }
 
+  // Build sparse range index: sheet -> col -> CellData[]
+  const rangeIndex = new Map();
+  for (const cell of allCells) {
+    if (!rangeIndex.has(cell.address.sheet)) {
+      rangeIndex.set(cell.address.sheet, new Map());
+    }
+    const sheetIndex = rangeIndex.get(cell.address.sheet);
+    if (!sheetIndex.has(cell.address.col)) {
+      sheetIndex.set(cell.address.col, []);
+    }
+    sheetIndex.get(cell.address.col).push(cell);
+  }
+
   const formulaParser = new FormulaParser({
     onCell: (ref) => {
       const address = _rowColToA1(ref.row, ref.col);
@@ -396,29 +457,48 @@ function evaluateWorkbook(workbook) {
     onRange: (ref) => {
       const result = [];
       const sheetData = workbook.sheets[ref.sheet];
+      const rowCount = ref.to.row - ref.from.row + 1;
+      const lengthRequestedCols = ref.to.col - ref.from.col + 1;
 
       if (!sheetData) {
         for (let row = ref.from.row; row <= ref.to.row; row++) {
-          result.push(new Array(ref.to.col - ref.from.col + 1).fill(0));
+          result.push(new Array(lengthRequestedCols).fill(0));
         }
         return result;
       }
 
-      for (let row = ref.from.row; row <= ref.to.row; row++) {
-        const rowData = [];
+      // Get list of columns in range that have indexed cells
+      const useColNum = [];
+      const sheetIndex = rangeIndex.get(ref.sheet);
+      if (sheetIndex) {
         for (let col = ref.from.col; col <= ref.to.col; col++) {
-          const address = _rowColToA1(row, col);
-          const cell = sheetData[address];
-
-          if (!cell) {
-            rowData.push(0);
-          } else if (cell.type === 'formula' && cell.formulaData && cell.formulaData.cachesResult !== undefined) {
-            rowData.push(cell.formulaData.cachesResult);
-          } else {
-            rowData.push(cell.value !== undefined && cell.value !== null ? cell.value : 0);
+          if (sheetIndex.has(col)) {
+            useColNum.push(col);
           }
         }
-        result.push(rowData);
+      }
+
+      for (let col = ref.from.col; col <= ref.to.col; col++) {
+        let colValues;
+
+        if (useColNum.includes(col)) {
+          const indexedCells = sheetIndex.get(col) || [];
+          const lengthIndexedCells = indexedCells.length;
+
+          if (lengthIndexedCells < lengthRequestedCols) {
+            colValues = _getColumnValuesFromIndex(indexedCells, ref.from.row, ref.to.row, rowCount);
+          } else {
+            colValues = _getColumnValuesFromSheet(sheetData, col, ref.from.row, ref.to.row, rowCount);
+          }
+        } else {
+          colValues = _getColumnValuesFromSheet(sheetData, col, ref.from.row, ref.to.row, rowCount);
+        }
+
+        // Transpose column to rows
+        for (let i = 0; i < colValues.length; i++) {
+          if (!result[i]) result[i] = [];
+          result[i].push(colValues[i]);
+        }
       }
       return result;
     },
