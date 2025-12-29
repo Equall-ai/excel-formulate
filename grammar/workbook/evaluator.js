@@ -481,15 +481,12 @@ function evaluateWorkbook(workbook) {
       for (let col = ref.from.col; col <= ref.to.col; col++) {
         let colValues;
 
-        if (useColNum.includes(col)) {
-          const indexedCells = sheetIndex.get(col) || [];
-          const lengthIndexedCells = indexedCells.length;
+        if (!useColNum.includes(col)) continue;
+        const indexedCells = sheetIndex.get(col) || [];
+        const lengthIndexedCells = indexedCells.length;
 
-          if (lengthIndexedCells < lengthRequestedCols) {
-            colValues = _getColumnValuesFromIndex(indexedCells, ref.from.row, ref.to.row, rowCount);
-          } else {
-            colValues = _getColumnValuesFromSheet(sheetData, col, ref.from.row, ref.to.row, rowCount);
-          }
+        if (lengthIndexedCells < lengthRequestedCols) {
+          colValues = _getColumnValuesFromIndex(indexedCells, ref.from.row, ref.to.row, rowCount);
         } else {
           colValues = _getColumnValuesFromSheet(sheetData, col, ref.from.row, ref.to.row, rowCount);
         }
@@ -551,6 +548,7 @@ function evaluateWorkbook(workbook) {
   while (iter < MAX_ITER) {
     for (const node of recursiveNodes) {
       const cell = cellIndex[node.id];
+      if (cell.formulaData?.cachesResult) continue;
       if (cell && cell.type === 'formula' && cell.formulaData && cell.formulaData.formulaString) {
         const result = evaluateFormula(
           formulaParser,
