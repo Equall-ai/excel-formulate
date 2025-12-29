@@ -381,16 +381,17 @@ function evaluateWorkbook(workbook) {
   const formulaParser = new FormulaParser({
     onCell: (ref) => {
       const address = _rowColToA1(ref.row, ref.col);
-      const cell = workbook.sheets[ref.sheet]?.[address];
+      const sheetData = workbook.sheets[ref.sheet];
+      const cell = sheetData ? sheetData[address] : null;
       if (!cell) {
         return 0;
       }
 
-      if (cell.type === 'formula' && cell.formulaData?.cachesResult !== undefined) {
+      if (cell.type === 'formula' && cell.formulaData && cell.formulaData.cachesResult !== undefined) {
         return cell.formulaData.cachesResult;
       }
 
-      return cell.value ?? 0;
+      return cell.value !== undefined && cell.value !== null ? cell.value : 0;
     },
     onRange: (ref) => {
       const result = [];
@@ -411,10 +412,10 @@ function evaluateWorkbook(workbook) {
 
           if (!cell) {
             rowData.push(0);
-          } else if (cell.type === 'formula' && cell.formulaData?.cachesResult !== undefined) {
+          } else if (cell.type === 'formula' && cell.formulaData && cell.formulaData.cachesResult !== undefined) {
             rowData.push(cell.formulaData.cachesResult);
           } else {
-            rowData.push(cell.value ?? 0);
+            rowData.push(cell.value !== undefined && cell.value !== null ? cell.value : 0);
           }
         }
         result.push(rowData);
@@ -426,7 +427,9 @@ function evaluateWorkbook(workbook) {
       if (!variable) return 0;
 
       // Return pre-computed result or value (as plain values, not wrapped)
-      return variable.result ?? variable.value ?? 0;
+      if (variable.result !== undefined && variable.result !== null) return variable.result;
+      if (variable.value !== undefined && variable.value !== null) return variable.value;
+      return 0;
     }
   });
 
@@ -453,7 +456,7 @@ function evaluateWorkbook(workbook) {
       continue;
     }
 
-    if (cell.type === 'formula' && cell.formulaData?.formulaString) {
+    if (cell.type === 'formula' && cell.formulaData && cell.formulaData.formulaString) {
       const result = evaluateFormula(
         formulaParser,
         cell.formulaData.formulaString,
@@ -468,7 +471,7 @@ function evaluateWorkbook(workbook) {
   while (iter < MAX_ITER) {
     for (const node of recursiveNodes) {
       const cell = cellIndex[node.id];
-      if (cell && cell.type === 'formula' && cell.formulaData?.formulaString) {
+      if (cell && cell.type === 'formula' && cell.formulaData && cell.formulaData.formulaString) {
         const result = evaluateFormula(
           formulaParser,
           cell.formulaData.formulaString,
